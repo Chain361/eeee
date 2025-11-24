@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order History</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="order-history.css">
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="nav-left">
+        <h2 class="logo">WEBSITE NAME</h2>
+        <a href="index.html" class="nav-item">home</a>
+    </div>
+
+    <div class="nav-right">
+        <a href="order-history.html" class="nav-item">order history</a>
+        <a href="profile.html" id="username-link" class="nav-item"><span id="username-display"></span> 👤</a>
+        <a href="cart.html" class=" nav-item cart-icon">🛒 <span id="cart-count">(0)</span></a>
+    </div>
+  </header>
+
+  <main class="order-container">
+    <h1 class="page-title">Order history</h1>
+    <div id="order-list" class="order-list">Loading...</div>
+  </main>
+
+  <!-- JS -->
+  <script>  
+
+  document.addEventListener("DOMContentLoaded", () => {
+  // ดึงชื่อผู้ใช้จาก sessionStorage
+  const username = sessionStorage.getItem("username") || "guest";
+  document.getElementById("username-display").textContent = username;
+
+  // mock cart count หรือข้อมูลจริงจาก backend
+  const cart = sessionStorage.getItem("mockCartCount") || 0;
+  document.getElementById("cart-count").textContent = `(${cart})`;
+  });
+
+  document.addEventListener("DOMContentLoaded", loadOrderHistory);
+
+  const userId = sessionStorage.getItem("userId") || 1;
+
+  // ฟอร์แมตวันที่
+  function formatDate(dateString) {
+    const d = new Date(dateString);
+    return d.toLocaleDateString("en-CA");
+  }
+
+  // ฟอร์แมตเวลา
+  function formatTime(dateString) {
+    const d = new Date(dateString);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // คืน class สีสถานะ
+  function getStatusClass(status) {
+    const s = status.toLowerCase();
+
+    if (s === "pending") return "status-badge status-pending";
+    if (s === "completed") return "status-badge status-completed";
+    if (s === "cancelled") return "status-badge status-cancelled";
+
+    return "status-badge";
+  }
+
+  // ⭐ แปลง Placed → Pending ให้แสดงสีเหลือง
+  function normalizeStatus(status) {
+    if (!status) return "Pending";
+    const s = status.toLowerCase();
+
+    if (s === "placed") return "Pending";   // <--- ตรงนี้สำคัญ
+    return status;
+  }
+
+  async function loadOrderHistory() {
+    const container = document.getElementById("order-list");
+    container.innerHTML = "Loading...";
+
+    try {
+      const response = await fetch(`/api/orders/history/${userId}`);
+      const orders = await response.json();
+
+      if (!Array.isArray(orders) || orders.length === 0) {
+        container.innerHTML = "<p>No orders found.</p>";
+        return;
+      }
+
+      // เรียงล่าสุดบนสุด
+      const sortedOrders = orders.sort(
+        (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
+      );
+
+      container.innerHTML = sortedOrders
+        .map((order, index) => {
+
+          // ⭐ convert Placed → Pending
+          const displayStatus = normalizeStatus(order.status);
+
+          const statusClass = getStatusClass(displayStatus);
+
+          const date = formatDate(order.orderDate);
+          const time = formatTime(order.orderDate);
+          const total = order.total.toFixed(2);
+
+          let itemsHTML = order.orderItems
+            .map(
+              (item) => `
+              <div class="item-row">
+                <div>
+                  ${item.productName}<br>
+                  <span style="color:gray; font-size:13px;">
+                    ${item.pricePerUnit} Baht × ${item.quantity}
+                  </span>
+                </div>
+                <div>${(item.pricePerUnit * item.quantity).toFixed(2)} Baht</div>
+              </div>
+            `
+            )
+            .join("");
+
+          return `
+            <div class="order-box">
+              <div class="order-header">
+                <div class="order-header-left">
+                    <span class="order-icon">📦</span>
+                    <div>
+                      <div><strong>Order #${index + 1}</strong></div>
+                      <div class="order-date">${date} ⏱ ${time}</div>
+                    </div>
+                </div>
+
+                <span class="${statusClass}">
+                  ${displayStatus}
+                </span>
+              </div>
+
+              <div class="order-items">${itemsHTML}</div>
+
+              <div class="total-row">
+                <span>Total</span>
+                <span>${total} Baht</span>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+    } catch (error) {
+      console.error("Order history load error:", error);
+      container.innerHTML = "<p>Error loading order history.</p>";
+    }
+  }
+  </script>
+
+</body>
+</html>

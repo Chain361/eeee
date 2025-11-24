@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile | WEBSITE NAME</title>
+    <link rel="stylesheet" href="styles.css"> 
+    <link rel="stylesheet" href="profile.css"> 
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">WEBSITE NAME</div>
+        <a href="index.html" class="index">home</a>
+        <nav class="auth-links" id="header-auth-links">
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1 class="page-title">My Account</h1>
+
+        <div class="profile-main-single">
+            <div id="profile-container">
+                <div class="profile-info-display" id="profile-info-display">
+                    <p><strong>Username:</strong> <span id="username-display">Loading...</span></p>
+                    <p><strong>Full Name:</strong> <span id="full-name-display">Loading...</span></p>
+                    <p><strong>Phone Number:</strong> <span id="phone-display">Loading...</span></p>
+                    <p><strong>Shipping Address:</strong> <span id="address-display">Loading...</span></p>
+                </div>
+                <button id="logout-button" class="logout-btn">Logout</button>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        const LOGIN_PAGE = 'login.html';
+        const API_BASE = 'http://localhost:8080/api'; 
+        const USER_API = `${API_BASE}/users`;
+
+        // ----------------------------------------------------------------
+        // 1. HEADER & LOGIN CHECK
+        // ----------------------------------------------------------------
+        function updateHeader() {
+            const username = sessionStorage.getItem('username');
+            const isLogin = sessionStorage.getItem('isLogin') === 'true';
+            const linksContainer = document.getElementById('header-auth-links');
+            const mockCartCount = sessionStorage.getItem('mockCartCount') || '0';
+
+            linksContainer.innerHTML = ''; 
+
+            if (!isLogin || !username) {
+                window.location.href = LOGIN_PAGE;
+                return false; 
+            }
+             linksContainer.innerHTML = `
+                <a href="order-history.html" class="nav-link">order history</a>
+                <a href="profile.html" class="nav-link">${username} 👤</a>
+                <a href="cart.html" class="nav-link cart-icon">🛒 (<span id="cart-count">${mockCartCount}</span>)</a> 
+            `;
+            return true;
+        }
+
+        // ----------------------------------------------------------------
+        // 2. FETCH & RENDER PROFILE DATA (GET /api/users/{userId})
+        // ----------------------------------------------------------------
+        
+        async function fetchAndRenderProfile() {
+            try {
+                const userId = sessionStorage.getItem('userId');
+                if (!userId) {
+                    console.error('User ID not found in session storage.');
+                    window.location.href = LOGIN_PAGE; // Redirect if no user ID
+                    return;
+                }
+
+                const response = await fetch(`${USER_API}/${userId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch profile data: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Render profile data
+                document.getElementById('full-name-display').textContent = data.fullName || 'N/A';
+                document.getElementById('username-display').textContent = data.username || 'N/A';
+                document.getElementById('phone-display').textContent = data.phone || 'N/A';
+                document.getElementById('address-display').textContent = data.userAddress || 'N/A';
+
+            } catch (error) {
+                console.error('Profile Fetch Error:', error);
+                const displayContainer = document.getElementById('profile-info-display');
+                displayContainer.innerHTML = '<p style="color: red;">Error loading profile data. Please try again later.</p>';
+            }
+        }
+        
+        // ----------------------------------------------------------------
+        // 3. LOGOUT LOGIC
+        // ----------------------------------------------------------------
+        function setupLogout() {
+            const logoutButton = document.getElementById('logout-button');
+            if (logoutButton) {
+                logoutButton.addEventListener('click', (e) => {
+                    e.preventDefault(); 
+                    sessionStorage.clear(); 
+                    alert('Logout successful! Redirecting to Homepage...');
+                    window.location.href = 'index.html';
+                });
+            }
+        }
+        
+        // ----------------------------------------------------------------
+        // Initialize on DOMContentLoaded
+        // ----------------------------------------------------------------
+        document.addEventListener('DOMContentLoaded', () => {
+            const loggedIn = updateHeader(); 
+            
+            if (loggedIn) {
+                fetchAndRenderProfile();
+            }
+            
+            setupLogout();
+        });
+    </script>
+</body>
+</html>

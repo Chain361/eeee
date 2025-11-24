@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+
+/* GENERAL */
+body {
+  font-family: 'Kanit', sans-serif;
+  background: #f7f7f7;
+}
+
+.logo {
+  color: #000;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.order-container {
+  width: 80%;
+  margin: 40px auto;
+}
+
+/* ================= NAVBAR MAIN ================= */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 15px 40px;
+  border-bottom: 1px solid #ddd;
+  font-family: 'Kanit', sans-serif;
+}
+
+/* LEFT SIDE */
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+
+/* RIGHT SIDE */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+
+/* Navigation links (home, history, username, cart) */
+.nav-item {
+  text-decoration: none;
+  color: black;
+  font-size: 14px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Hover effect — กล่องเทา */
+.nav-item:hover {
+  background-color: #f1f1f1;
+  border-radius: 10px;
+}
+
+/* Disable active styling (no bold, no background) */
+.nav-item.active {
+  background-color: transparent !important;
+  font-weight: normal !important;
+}
+
+/* Username */
+.nav-user {
+  font-size: 14px;
+}
+
+/* Icons */
+.user-icon {
+  font-size: 20px;
+}
+
+.cart-icon {
+  text-decoration: none;
+  color: black;
+  font-size: 14px;
+}
+
+/* ================= ORDER BOX ================= */
+.order-box {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.order-icon {
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.order-date {
+  display: flex;
+  align-items: center;
+  margin-top: 3px;
+  color: gray;
+  font-size: 14px;
+}
+
+/* ================= ITEM LIST ================= */
+.order-items {
+  margin-top: 15px;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.item-name {
+  font-weight: bold;
+}
+
+.total-row {
+  margin-top: 10px;
+  border-top: 1px solid #ddd;
+  padding-top: 10px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ================= STATUS BADGES ================= */
+.status-badge {
+  padding: 6px 15px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+/* Pending = Yellow */
+.status-pending {
+  background: #f9e7b4;
+  color: #b38b00;
+}
+
+/* Completed = Green */
+.status-completed {
+  background: #c8f7c5;
+  color: #2e8b57;
+}
+
+/* Cancelled = Red */
+.status-cancelled {
+  background: #f8c7c7;
+  color: #c0392b;
+}

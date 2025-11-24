@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | WEBSITE NAME</title>
+    <link rel="stylesheet" href="styles.css"> 
+    <link rel="stylesheet" href="checkout.css"> 
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">WEBSITE NAME</div>
+        <a href="index.html" class="index">home</a>
+        <nav class="auth-links" id="header-auth-links">
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1 class="page-title">Checkout</h1>
+        
+        <form id="checkout-form" class="checkout-grid">
+            
+            <div class="checkout-forms">
+                <div class="checkout-box" id="shipping-address-box">
+                    <h2>Your Shipping Address</h2>
+                    <p>Loading address...</p>
+                </div>
+
+                <div class="checkout-box">
+                    <h2>Payment method</h2>
+                    
+                    <div class="form-group">
+                
+                        <div class="payment-option">
+                            <input type="radio" name="payment" value="mastercard" id="mc" checked>
+                            <label for="mc" class="payment-label">
+                                <img src="images/mastercard.png" alt="MasterCard" class="card-icon">
+                                <span>mastercard</span>
+                            </label>
+                        </div>
+                    
+                        <div class="payment-option">
+                            <input type="radio" name="payment" value="visa" id="visa">
+                            <label for="visa" class="payment-label">
+                                <img src="images/visa.png" alt="Visa" class="card-icon">
+                                <span>visa</span>
+                            </label>
+                        </div>
+
+                        <div class="payment-option">
+                            <input type="radio" name="payment" value="qr_payment" id="qr">
+                            <label for="qr" class="payment-label">
+                                <img src="images/promptpay.png" alt="QR Payment" class="card-icon">
+                                <span>prompt pay</span>
+                            </label>
+                        </div>
+                
+                    </div>
+                </div>
+            </div>
+
+            <div class="cart-summary">
+                <h2>Order Summary</h2>
+                <div id="order-items-summary">
+                    <p>Loading items...</p>
+                </div>
+                
+                <div class="summary-line">
+                    <span>Subtotal</span>
+                    <span id="summary-subtotal">0 Baht</span>
+                </div>
+
+                <div class="summary-line">
+                    <span>Shipping</span>
+                    <span id="summary-shipping">Free</span>
+                </div>
+
+                <div class="summary-line total">
+                    <span>Total</span>
+                    <span id="summary-total">0 Baht</span>
+                </div>
+                
+                <button type="submit" class="submit-btn final-checkout">Place Order</button>
+            </div>
+
+        </form>
+    </main>
+    
+    <script>
+    // ----------------------------------------------------------------
+    // 0. CONFIGURATION & API ENDPOINTS
+    // ----------------------------------------------------------------
+    const CHECKOUT_API = 'http://localhost:8080/api/orders/checkout';
+    const LOGIN_PAGE = 'login.html';
+    const USER_API = 'http://localhost:8080/api/users/';
+    const CART_API = 'http://localhost:8080/api/cart/';
+
+    // Fallback Data
+    const FALLBACK_ADDRESS = {
+        fullName: 'Mock User (Fallback)',
+        phone: '081-XXX-XXXX',
+        userAddress: 'Fallback Address: Please check mock/mock-profile.json'
+    };
+    
+    const FALLBACK_CART_ITEMS = [
+        { name: 'ProductA', price: 1500, quantity: 2, subtotal: 3000 },
+        { name: 'ProductB', price: 1500, quantity: 1, subtotal: 1500 },
+        { name: 'ProductC', price: 1500, quantity: 1, subtotal: 1500 }
+    ];
+
+    // ----------------------------------------------------------------
+    // 1. HEADER & LOGOUT LOGIC
+    // ----------------------------------------------------------------
+
+    function updateHeader() {
+        const username = sessionStorage.getItem('username');
+        const isLogin = sessionStorage.getItem('isLogin') === 'true';
+        const linksContainer = document.getElementById('header-auth-links');
+        
+        if (!isLogin || !username) { 
+             window.location.href = LOGIN_PAGE; 
+             return false; 
+        }
+
+        const mockCartCount = sessionStorage.getItem('mockCartCount') || '0';
+        linksContainer.innerHTML = `
+            <a href="order-history.html" class="nav-link">order history</a>
+            <a href="profile.html" class="nav-link">${username} 👤</a>
+            <a href="cart.html" class="nav-link cart-icon">🛒 (${mockCartCount})</a> 
+        `;
+        return true;
+    }
+
+    // ----------------------------------------------------------------
+    // 2. RENDERING LOGIC (Address & Summary)
+    // ----------------------------------------------------------------
+
+    function renderAddress(data) {
+        const addressBox = document.getElementById('shipping-address-box');
+        
+        addressBox.innerHTML = `
+            <h2>Shipping Address</h2>
+            <p class="address-name">${data.fullName}</p>
+            <p>${data.userAddress}</p>
+            <p>Phone: ${data.phone}</p>
+        `;
+    }
+
+    function renderSummary(items) {
+        const itemsSummary = document.getElementById('order-items-summary');
+        const summarySubtotal = document.getElementById('summary-subtotal');
+        const summaryTotal = document.getElementById('summary-total');
+        const shippingFeeElement = document.getElementById('summary-shipping');
+        
+        itemsSummary.innerHTML = '';
+        
+        let subtotal = 0;
+        const shippingFee = 0.00; 
+
+        items.forEach(item => {
+            const itemSubtotal = item.itemPrice || (item.price * item.quantity);
+            subtotal += itemSubtotal;
+            
+            const itemName = item.productName || item.name;
+            
+            itemsSummary.innerHTML += `
+                <div class="summary-item">
+                    <span>${itemName} x${item.quantity}</span>
+                    <span>${itemSubtotal.toFixed(2)} Baht</span>
+                </div>
+            `;
+        });
+        
+        const total = subtotal + shippingFee;
+        
+        summarySubtotal.textContent = `${subtotal.toFixed(2)} Baht`;
+        shippingFeeElement.textContent = (shippingFee === 0) ? 'Free' : `${shippingFee.toFixed(2)} Baht`;
+        summaryTotal.textContent = `${total.toFixed(2)} Baht`;
+    }
+    
+    // ----------------------------------------------------------------
+    // 3. FETCH DATA (Address & Summary)
+    // ----------------------------------------------------------------
+
+    async function fetchAddressAndSummary() {
+        const addressBox = document.getElementById('shipping-address-box');
+        const itemsSummary = document.getElementById('order-items-summary');
+        const userId = sessionStorage.getItem("userId");
+        
+        if (!userId) {
+            console.error('No userId found in session');
+            window.location.href = LOGIN_PAGE;
+            return;
+        }
+
+        // 1. Fetch User Profile
+        try {
+            const profileResponse = await fetch(USER_API + userId);
+            if (!profileResponse.ok) throw new Error('Profile fetch failed');
+            
+            const profileData = await profileResponse.json();
+            renderAddress(profileData); 
+        } catch (error) {
+            console.error('Error fetching address:', error);
+            addressBox.innerHTML = `<h2>Shipping Address</h2><p style="color: red;" class="error-text">Error loading address. Please try again later.</p>`;
+            renderAddress(FALLBACK_ADDRESS); 
+        }
+        
+        // 2. Fetch Cart Data
+        try {
+            const cartResponse = await fetch(CART_API + userId);
+            if (!cartResponse.ok) throw new Error('Cart fetch failed');
+            
+            const cartData = await cartResponse.json(); 
+            const cartItems = cartData.items || [];
+            renderSummary(cartItems.length > 0 ? cartItems : FALLBACK_CART_ITEMS); 
+
+        } catch (error) {
+            console.error('Error fetching cart:', error);
+            itemsSummary.innerHTML = '<p class="error-text" style="color: red;">Error loading cart. Please try again later.</p>';
+            renderSummary(FALLBACK_CART_ITEMS);
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // 4. CHECKOUT LOGIC
+    // ----------------------------------------------------------------
+
+    async function handlePlaceOrder(e) {
+        e.preventDefault();
+        const userId = sessionStorage.getItem('userId');
+        const selectedPayment = document.querySelector('input[name="payment"]:checked'); 
+        const placeOrderBtn = document.querySelector('.final-checkout');
+        
+        console.log('=== Checkout Debug ===');
+        console.log('userId from sessionStorage:', userId);
+        console.log('Selected Payment:', selectedPayment ? selectedPayment.value : 'None');
+        
+        if (!userId) { 
+            alert('Session expired. Please log in again.'); 
+            return; 
+        }
+        if (!selectedPayment) { 
+            alert('Please select a payment method');
+            return; 
+        }
+        
+        placeOrderBtn.textContent = 'Processing...';
+        placeOrderBtn.disabled = true;
+
+        try {
+            const requestBody = {
+                userId: parseInt(userId, 10),
+                paymentMethod: selectedPayment.value
+            };
+
+            console.log('Request Body:', requestBody);
+
+            const response = await fetch(CHECKOUT_API, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            console.log('Response Status:', response.status);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Error Data:', errorData);
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('Checkout success:', result);
+
+            sessionStorage.removeItem('mockCartCount');
+
+            const totalText = document.getElementById('summary-total').textContent;
+
+            // ✅ แสดง Modal
+             alert(
+            "Order placed successfully!\n" +
+            "Order ID: " + (result.orderId || 'ORD-123456') + "\n" +
+            "Total: " + totalText
+              );
+
+            // พาไปที่ order history หลังจาก OK ใน alert
+            window.location.href = 'order-history.html';
+
+
+            
+        } catch (error) {
+            console.error('Checkout Error:', error);
+            alert(`Failed to place order: ${error.message}\nPlease try again later.`);
+            
+        } finally {
+            placeOrderBtn.textContent = 'Place Order';
+            placeOrderBtn.disabled = false;
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // 5. INITIALIZATION
+    // ----------------------------------------------------------------
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const loggedIn = updateHeader(); 
+        if (loggedIn) {
+            fetchAddressAndSummary();
+        }
+        
+        const checkoutForm = document.getElementById('checkout-form');
+        if (checkoutForm) {
+            checkoutForm.addEventListener('submit', handlePlaceOrder);
+        }
+    });
+
+    const paymentRadios = document.querySelectorAll('input[name="payment"]');
+    const paymentOptions = document.querySelectorAll('.payment-option');
+
+    function syncPaymentHighlight() {
+        paymentOptions.forEach(option => {
+            option.classList.remove('selected');
+        });
+            
+        const checkedRadio = document.querySelector('input[name="payment"]:checked');
+        if (checkedRadio) {
+            checkedRadio.closest('.payment-option').classList.add('selected');
+        }
+    }
+
+    paymentRadios.forEach(radio => {
+        radio.addEventListener('change', syncPaymentHighlight);
+    });
+
+    syncPaymentHighlight();
+
+    </script>  
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Product Detail | WEBSITE NAME</title>
+    <link rel="stylesheet" href="styles.css"> 
+    <link rel="stylesheet" href="product-detail.css"> 
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">WEBSITE NAME</div>
+        <a href="index.html" class="index">home</a>
+        <nav class="auth-links" id="header-auth-links">
+        </nav>
+    </header>
+
+    <main class="container">
+        <div id="product-detail-content">
+            <p style="text-align: center; padding: 50px;">Loading product details...</p>
+        </div>
+    </main>
+    
+    <script>
+        const LOGIN_PAGE = 'login.html';
+        // Endpoint ที่ถูกต้อง: ชี้ไปที่ Backend Server
+        const API_PRODUCT_ENDPOINT = 'http://localhost:8080/api/products'; 
+        
+        // ** NEW: MAP Product ID ไปยังชื่อไฟล์รูปภาพจริง **
+        const IMAGE_MAP = {
+            "1": "1.jpg", 
+            "2": "2.jpg", 
+            "4": "4.jpg", 
+            "5": "5.jpg", 
+            "6": "6.jpg", 
+            "7": "7.jpg", 
+            "8": "8.jpg",
+            "9": "9.jpg"
+        };
+        
+        // ----------------------------------------------------------------
+        // 1. HEADER & LOGIN CHECK
+        // ----------------------------------------------------------------
+        function updateHeader() {
+            const username = sessionStorage.getItem('username');
+            const isLogin = sessionStorage.getItem('isLogin') === 'true';
+            const linksContainer = document.getElementById('header-auth-links');
+            const mockCartCount = sessionStorage.getItem('mockCartCount') || '0'; 
+
+            if (!isLogin || !username) {
+                linksContainer.innerHTML = `<a href="${LOGIN_PAGE}" class="nav-link">Login</a><a href="register.html" class="nav-link">Register</a>`;
+                return false; 
+            }
+            
+            linksContainer.innerHTML = `
+                <a href="order-history.html" class="nav-link">order history</a>
+                <a href="profile.html" class="nav-link">${username} 👤</a>
+                <a href="cart.html" class="nav-link cart-icon">🛒 (<span id="cart-count">${mockCartCount}</span>)</a> 
+            `;
+            return true;
+        }
+
+        // ----------------------------------------------------------------
+        // 2. RENDER AND FETCH LOGIC (FINAL FIX)
+        // ----------------------------------------------------------------
+        function getProductIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('id'); // ดึง ID จาก URL เช่น ?id=1
+        }
+        
+        async function fetchAndRenderProductDetail() {
+            const productId = getProductIdFromUrl();
+            const container = document.getElementById('product-detail-content');
+            
+            if (!productId) {
+                container.innerHTML = '<p style="color: red; text-align: center; padding: 50px;">Error: Product ID not specified.</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(API_PRODUCT_ENDPOINT); 
+                if (!response.ok) throw new Error('Failed to fetch product list.');
+
+                const allProducts = await response.json(); 
+                
+                // *** FIXED: Logic การค้นหาสินค้า: รองรับทั้งฟิลด์ ID และ productId ***
+                const product = allProducts.find(p => 
+                    (p.id && p.id.toString() === productId) || 
+                    (p.productId && p.productId.toString() === productId)
+                );
+
+                if (!product) {
+                    container.innerHTML = `<p style="color: red; text-align: center; padding: 50px;">Error: Product ID ${productId} not found on the server.</p>`;
+                    return;
+                }
+                
+                renderDetail(product);
+
+            } catch (error) {
+                console.error('Detail Load Error:', error);
+                container.innerHTML = `<p style="color: red; text-align: center; padding: 50px;">Error loading details: Check API and Data structure. Error: ${error.message || 'API connection failed.'}</p>`;
+            }
+        }
+        
+        function renderDetail(product) {
+            const container = document.getElementById('product-detail-content');
+            
+            const name = product.productName || product.name || 'N/A';
+            const price = product.price || 0;
+            const stock = product.stockQuantity || product.stock || 0;
+            const productId = product.productId || product.id || 'N/A';
+            const description = product.description || product.desc || 'No product description is available from the server.';
+            
+            const imageUrl = IMAGE_MAP[productId.toString()] || 'placeholder.png'; 
+            
+            container.innerHTML = `
+                <div class="detail-content">
+                    <div class="product-image-large">
+                        <img src="images/${imageUrl}" alt="${name}">
+                    </div>
+                    <div class="product-name">
+                        <h1>${name}</h1>
+                      <div class="product-info-detail">
+                        <p class="detail-price">${price.toLocaleString()}.00 Baht</p>
+                        <p class="product-sku">StockQuantity: x${stock}</p>
+                        <div class="detail-description">
+                            <p>${description}</p>
+                        </div>
+
+                        <div class="detail-actions">
+                            <button class="add-to-cart-btn large" data-product-id="${productId}" id="detail-add-btn">
+                                Add to cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('detail-add-btn').addEventListener('click', handleDetailAddToCart);
+        }
+
+        // ----------------------------------------------------------------
+// 3. ADD TO CART LOGIC (Real API Integration - Same as Homepage)
+// ----------------------------------------------------------------
+const ADD_TO_CART_API = 'http://localhost:8080/api/cart/add';
+const FALLBACK_PRODUCTS = [
+    { productId: 1, productName: 'Wireless Mouse', price: 450.0, stockQuantity: 30 }, 
+    { productId: 2, productName: 'Mechanical Keyboard', price: 1250.0, stockQuantity: 20 },
+    { productId: 4, productName: 'Gaming Headset', price: 990.0, stockQuantity: 25 },
+    { productId: 5, productName: 'USB-C Charger 65W', price: 799.0, stockQuantity: 40 },
+    { productId: 6, productName: '27-inch 4K Monitor', price: 8990.0, stockQuantity: 8 },
+    { productId: 7, productName: 'Laptop Stand Adjustable', price: 650.0, stockQuantity: 18 },
+    { productId: 8, productName: 'External SSD 1TB', price: 3290.0, stockQuantity: 12 },
+    { productId: 9, productName: 'Bluetooth Speaker', price: 1150.0, stockQuantity: 22 },
+];
+
+function updateLocalCart(productIdStr, quantity) {
+    const cartKey = 'localCartItems';
+    let cart = JSON.parse(sessionStorage.getItem(cartKey) || '[]'); 
+    const productId = parseInt(productIdStr);
+
+    const productDetails = FALLBACK_PRODUCTS.find(p => p.productId === parseInt(productId));
+    
+    if (!productDetails) {
+        console.error(`Product ID ${productId} not found for local storage!`);
+        return;
+    }
+
+    const itemIndex = cart.findIndex(item => item.productId === productId);
+    
+    if (itemIndex > -1) {
+        cart[itemIndex].quantity += quantity;
+        cart[itemIndex].subtotal = cart[itemIndex].price * cart[itemIndex].quantity; 
+    } else {
+        cart.push({
+            productId: productId,
+            name: productDetails.productName,
+            price: productDetails.price,
+            quantity: quantity,
+            subtotal: productDetails.price * quantity
+        });
+    }
+
+    sessionStorage.setItem(cartKey, JSON.stringify(cart));
+}
+
+async function handleDetailAddToCart(e) {
+    const userId = sessionStorage.getItem('userId');
+    const isLogin = sessionStorage.getItem('isLogin') === 'true';
+
+    if (!isLogin || !userId) {
+        alert('Please log in to add items to your cart.');
+        window.location.href = LOGIN_PAGE;
+        return;
+    }
+
+    const productId = e.target.getAttribute('data-product-id');
+    const quantityInput = document.getElementById('quantity');
+    const quantity = parseInt(quantityInput?.value) || 1;
+
+    if (!productId) return;
+
+    // ดึงชื่อสินค้าจากหน้าเว็บ
+    const productNameElement = document.querySelector('.product-name h1');
+    const productName = productNameElement ? productNameElement.textContent : `Product ${productId}`;
+
+    try {
+        // เรียก API จริง (เหมือนหน้า Home)
+        const url = `${ADD_TO_CART_API}?userId=${userId}&productId=${productId}&quantity=${quantity}`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data && data.items) {
+                alert(`Added ${quantity} x ${productName} to the cart!`); 
+                
+                // อัปเดต Local Cart
+                updateLocalCart(productId, quantity); 
+                
+                // อัปเดตจำนวนสินค้าในตะกร้า
+                const totalItems = data.items.reduce((total, item) => total + item.quantity, 0);
+                sessionStorage.setItem('mockCartCount', totalItems.toString()); 
+                
+                // อัปเดต Header
+                const countElement = document.getElementById('cart-count');
+                if (countElement) countElement.textContent = totalItems.toString();
+            } else {
+                alert("Failed to add item to cart. Please try again.");
+            }
+        } else if (response.status === 400) {
+            // ✅ แจ้งเตือนเมื่อสินค้าหมด
+            alert(`${productName} out of stock!`);
+        } else {
+            const errorText = await response.text();
+            console.error('API Error:', response.status, errorText);
+            alert(`Failed to add item to cart. Server returned ${response.status}.`);
+        }
+
+    } catch (error) {
+        console.error('Add to Cart Error:', error);
+        alert('Server connection error. Cannot add item to cart.');
+    }
+}
+        
+        
+        // ----------------------------------------------------------------
+        // 4. INITIALIZATION
+        // ----------------------------------------------------------------
+        document.addEventListener('DOMContentLoaded', () => {
+            updateHeader();
+            fetchAndRenderProductDetail(); 
+        });
+    </script> 
+</body>
+</html>

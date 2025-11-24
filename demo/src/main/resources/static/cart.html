@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart | WEBSITE NAME</title>
+    <link rel="stylesheet" href="styles.css"> 
+    <link rel="stylesheet" href="cart.css"> 
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">WEBSITE NAME</div>
+        <a href="index.html" class="index">home</a>
+        <nav class="auth-links" id="header-auth-links">
+        </nav>
+    </header>
+
+     <main class="container">
+        <h1 class="page-title">Your Cart</h1>
+
+        <div class="cart-layout">
+
+            <div class="cart-items" id="cart-items-container">
+                <p class="empty-cart">Loading cart items...</p>
+            </div>
+
+            <div class="cart-summary">
+                <h2>Order Summary</h2>
+                <div class="summary-line">
+                    <span>subtotal</span>
+                    <span id="summary-subtotal">0.00 Baht</span>
+                </div>
+                <div class="summary-line">
+                    <span>shipping</span>
+                    <span id="summary-shipping">Free</span>
+                </div>
+                <div class="summary-line total">
+                    <span>Total</span>
+                    <span id="summary-total">0.00 Baht</span>
+                </div>
+
+                <button class="checkout-btn" id="checkout-button">
+                    <a href="checkout.html">Checkout</a>
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="delete-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="modal-title">ต้องการลบสินค้าหรือไม่?</h3>
+            <div class="modal-actions">
+                <button class="modal-btn btn-cancel" onclick="closeDeleteModal()">ยกเลิก</button>
+                <button class="modal-btn btn-confirm" onclick="confirmDeleteAction()">ลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // API Endpoints
+    const CART_API_ENDPOINT = 'http://localhost:8080/api/cart/';
+    const IMAGE_BASE_URL = "http://localhost:8080/api/images/";
+    const CHECKOUT_PAGE = 'checkout.html';
+    const LOGIN_PAGE = 'login.html';
+    let currentCartData = [];
+
+
+    // ----------------------------------------------------------------
+    // HEADER LOGIC
+    // ----------------------------------------------------------------
+    function updateHeader(cartItems = []) {
+        const username = sessionStorage.getItem('username');
+        const isLogin = sessionStorage.getItem('isLogin') === 'true';
+        const linksContainer = document.getElementById('header-auth-links');
+        const realCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+        if (!isLogin || !username) { 
+            linksContainer.innerHTML = `
+                <a href="#" class="nav-link">home</a>
+                <a href="#" class="nav-link">order history</a>
+                <a href="#" class="nav-link">customer's name 👤</a>
+                <a href="#" class="nav-link">🛒 (${realCartCount})</a>
+            `;
+            return true;
+        } 
+           
+        linksContainer.innerHTML = `
+          <a href="order-history.html" class="nav-link">order history</a>
+          <a href="profile.html" class="nav-link">${username} 👤</a>
+          <a href="cart.html" class="nav-link">🛒 (${realCartCount})</a>
+         `;
+        return true;
+    }
+       
+    
+
+    // ----------------------------------------------------------------
+    // RENDERING LOGIC
+    // ----------------------------------------------------------------
+
+    function calculateAndRenderSummary() {
+        const summarySubtotal = document.getElementById('summary-subtotal');
+        const summaryTotal = document.getElementById('summary-total');
+        let subtotal = 0;
+        const shippingFee = 0.00;
+
+        currentCartData.forEach(item => {
+            const itemTotal = item.subtotal || item.itemTotalPrice || 0;
+            subtotal += itemTotal;
+        });
+
+        const total = subtotal + shippingFee;
+        const formatOptions = {
+            style: 'decimal',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        };
+        summarySubtotal.textContent = subtotal.toLocaleString('en-US', formatOptions) + ' Baht';
+        summaryTotal.textContent = total.toLocaleString('en-US', formatOptions) + ' Baht';
+        document.getElementById('checkout-button').disabled = (subtotal === 0);
+    }
+    
+    function renderCartItems(cartItems) {
+        const container = document.getElementById('cart-items-container');
+        container.innerHTML = '';
+        currentCartData = cartItems;
+
+        if (!cartItems || cartItems.length === 0) {
+            container.innerHTML = '<p class="empty-cart">Your cart is empty.</p>';
+            calculateAndRenderSummary(); // คำนวณให้เป็น 0
+            return;
+        }
+
+        cartItems.forEach((item) => {
+            const itemName = item.name || item.productName || 'Unnamed Product';
+            const itemPrice = item.price || item.itemPrice || 0;
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'cart-item';
+            itemDiv.innerHTML = `
+                <div class="item-img">
+                    <img src="./images/${item.productId}.jpg" alt="${itemName}">
+                </div>
+                <div class="item-details">
+                    <p class="item-name">${itemName}</p> 
+                    <p class="item-price">${itemPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })} Baht</p>
+                </div>
+                <div class="item-actions">
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="${item.quantity > 1 ? `handleUpdateQuantity(${item.productId}, -1)` : `handleRemoveItem(${item.productId}, ${item.quantity})`}">−</button>
+                        <div class="quantity-display" id="qty-${item.productId}">${item.quantity}</div>
+                        <button class="quantity-btn" onclick="handleUpdateQuantity(${item.productId}, 1)">+</button>
+                    </div>
+                    <button class="remove-btn" onclick="handleRemoveItem(${item.productId}, ${item.quantity})">Remove</button>
+                </div>
+            `;
+            container.appendChild(itemDiv);
+        });
+        calculateAndRenderSummary();
+    }
+
+    // ----------------------------------------------------------------
+    // CART ACTION LOGIC
+    // ----------------------------------------------------------------
+    async function updateCartAPI(action, productId, quantity) {
+        // (สมมติว่า 'userId' ถูกเซฟไว้ใน session ตอน login)
+        const userId = sessionStorage.getItem('userId'); 
+        if (!userId) {
+            alert('Session expired. Please log in.');
+            window.location.href = LOGIN_PAGE;
+            return;
+        }
+
+        document.getElementById('cart-items-container').innerHTML = '<p class="empty-cart">Updating cart...</p>';
+        
+        const API_URL = `${CART_API_ENDPOINT}${action}?userId=${userId}&productId=${productId}&quantity=${quantity}`;
+
+        try {
+            // (DoD 1 & 2) "ยิง" POST ไปที่ Backend
+            const response = await fetch(API_URL, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                // (ถ้า Backend ตอบ 405 "Method Not Allowed" หรือ 500)
+                const errorText = await response.text();
+                throw new Error(errorText || `Failed to ${action} item`);
+            }
+            
+            // (DoD 3) "Merge" (ซิงก์)
+            // ถ้าสำเร็จ... "โหลดตะกร้าใหม่ทั้งหมด" จาก Server
+            console.log(`Successfully ${action}ed item. Refreshing cart...`);
+            await fetchAndRenderCart();
+
+        } catch (error) {
+            console.error(`Error updating cart (${action}):`, error);
+            let friendlyMessage;
+            if (error.message && error.message.includes('StockException')) {
+                const failedItem = currentCartData.find(item => item.productId === productId);
+                
+                if (failedItem) {
+                    const productName = failedItem.name || failedItem.productName || 'This item';
+                    friendlyMessage = `${productName} out of stock!`;
+                } else {
+                    friendlyMessage = 'Sorry! That item is currently out of stock.';
+                }
+
+            } else {
+                friendlyMessage = `Error updating cart. Please try again.\n(${error.message})`;
+            }
+
+            alert(friendlyMessage);
+            await fetchAndRenderCart(); 
+        }
+    }
+
+    function handleUpdateQuantity(productId, quantityChange) {
+        if (quantityChange > 0) {
+            // (DoD 1) เพิ่ม 1 ชิ้น
+            updateCartAPI('add', productId, 1);
+        } else {
+            // (DoD 1) ลบ 1 ชิ้น
+            updateCartAPI('remove', productId, 1);
+        }
+    }
+
+    let pendingDeleteItem = null;
+    
+    //ฟังก์ชันเปิด Modal เมื่อกดปุ่ม Remove
+    function handleRemoveItem(productId, totalQuantity) {
+        pendingDeleteItem = { productId, totalQuantity };
+        document.getElementById('delete-modal').classList.remove('hidden');
+    }
+
+    //ฟังก์ชันปิด Modal
+    function closeDeleteModal() {
+        document.getElementById('delete-modal').classList.add('hidden');
+        pendingDeleteItem = null;
+    }
+
+    // ฟังก์ชันยืนยันการลบ
+    function confirmDeleteAction() {
+        if (pendingDeleteItem) {
+            // เรียก API เพื่อลบสินค้าจริงๆ
+            updateCartAPI('remove', pendingDeleteItem.productId, pendingDeleteItem.totalQuantity);
+        }
+        closeDeleteModal();
+    }
+
+    // ----------------------------------------------------------------
+    // DATA FETCHING
+    // ----------------------------------------------------------------
+    
+    async function fetchAndRenderCart() {
+        console.log('Fetching cart from "Source of Truth" (Backend API)...');
+        const userId = sessionStorage.getItem('userId');
+        
+        // (FIX) "โกง" ระบบ... ถ้า Login ไม่ได้... ให้ยัด userId ปลอม
+        if (!userId) {
+             console.warn('No userId found! HACK: Injecting userId=1 for testing.');
+             sessionStorage.setItem('userId', '1'); // <-- (นี่คือ "การโกง" ที่เราคุยกัน)
+             sessionStorage.setItem('username', 'max');
+             sessionStorage.setItem('isLogin', 'true');
+             // (เรียกตัวเองซ้ำ... แต่คราวนี้จะมี userId แล้ว)
+             fetchAndRenderCart();
+             return;
+        }
+        
+        const container = document.getElementById('cart-items-container');
+
+        try {
+            // 1. "ยิง" GET ไปที่ Backend
+            const response = await fetch(CART_API_ENDPOINT + userId); 
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log('Cart not found (404). Rendering empty cart.');
+                    renderCartItems([]);
+                    updateHeader([]);
+                    return;
+                }
+                throw new Error(`Failed to fetch cart data: ${response.status}`);
+            }
+
+            const cartData = await response.json();
+            
+            // 2. ถ้าสำเร็จ... ส่ง "ของจริง" (cartData.items) ไปวาด
+            if (!cartData || !cartData.items || cartData.items.length === 0) {
+                renderCartItems([]);
+                updateHeader([]);
+            } else {
+                renderCartItems(cartData.items);
+                // (FIX) ส่ง "ของจริง" ไปอัปเดต Header ด้วย
+                updateHeader(cartData.items);
+            }
+
+        } catch (error) {
+            console.error('Cart Load Error:', error);
+            container.innerHTML = `<p class="empty-cart" style="color: red;">Could not load cart data. ${error.message}</p>`;
+        }
+    }
+    
+    // ----------------------------------------------------------------
+    // INITIALIZATION
+    // ----------------------------------------------------------------
+    window.addEventListener('pageshow', (event) => {
+        // (ใช้ pageshow เพื่อแก้บั๊กปุ่ม Back)
+        console.log("Page is visible: Running update.");
+        fetchAndRenderCart();
+    });
+    </script>
+</body>
+</html>

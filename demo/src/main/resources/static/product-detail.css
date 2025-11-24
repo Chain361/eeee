@@ -1,0 +1,151 @@
+/* -------------------------------------------
+    3. PRODUCT DETAIL PAGE (product-detail.html)
+    -------------------------------------------
+*/
+
+/* Container for entire detail page */
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 80px 40px;
+    min-height: calc(100vh - 60px);
+}
+
+/* Layout for the main content area (Image left, Info right) */
+.detail-content {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 80px;
+    margin-top: 0;
+    align-items: start;
+}
+
+/* Left side: Large Image */
+.product-image-large {
+    background-color: #fff;
+    border-radius: 0;
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 420px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.product-image-large img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+}
+
+/* Right side: Product Info & Actions */
+.product-info-detail {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+.detail-price {
+    font-size: 20px;
+    color: #000;
+    font-weight: 600;
+    margin-bottom: 5px;
+    order: -1;
+}
+.product-name{
+    font-size: 15px;
+    margin-bottom: 15px;
+    font-weight: 600;
+    color: #000;
+    line-height: 1.2;
+
+}
+.product-info-detail h1 {
+    font-size: 34px;
+    margin-bottom: 15px;
+    font-weight: 600;
+    color: #000;
+    line-height: 1.2;
+}
+
+.product-sku {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 30px;
+    font-weight: 400;
+}
+
+.detail-description {
+    margin-top: 0;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #d0d0d0;
+    margin-bottom: 30px;
+}
+
+.detail-description h3 {
+    display: none;
+}
+
+.detail-description p {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #333;
+    margin-bottom: 0;
+    font-weight: 400;
+}
+
+.detail-description ul {
+    display: none;
+}
+
+.detail-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.quantity-selector {
+    display: none;
+}
+
+/* ✅ โค้ดใหม่ (เพื่อให้แสดงผล) */
+.quantity-selector-custom { /* หรือใช้ .quantity-selector ถ้าคุณใช้ชื่อเดิม */
+    display: flex; /* เปลี่ยนจาก none */
+    align-items: center;
+    margin-bottom: 20px;
+}
+.quantity-selector-custom label {
+    margin-right: 10px;
+}
+.quantity-selector-custom input {
+    /* กำหนดสไตล์พื้นฐาน */
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* ปุ่ม Add to Cart */
+.add-to-cart-btn.large {
+    padding: 13px 55px;
+    font-size: 15px;
+    font-weight: 500;
+    width: auto;
+    background-color: #2d2d2d;
+    color: #fff;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-family: 'Kanit', sans-serif;
+    margin-right: 170px;
+}
+
+.add-to-cart-btn.large:hover {
+    background-color: #000;
+}
